@@ -14,20 +14,18 @@ sc = SparkContext()
 
 # Getting .csv
 tf = sc.textFile("data.csv")
-header = tf.first()
+# header = tf.first()
 
-rdd = tf.map(lambda line: line.split(";")).filter(lambda line: line != header).map(lambda line: (line[3], to_int(line[6])))
+# rdd = tf.map(lambda line: line.split(";")).filter(lambda line: line != header).map(lambda line: (line[3], to_int(line[6])))
+rdd = tf.map(lambda line: line.split(";")).map(lambda line: (line[3], to_int(line[6])))
 
-#rdd = sc.parallelize(sorted(rdd.reduceByKey(add).collect()))
-
-rdd = rdd.reduceByKey(lambda a, b: a + b)
-
-# rdd = rdd.reduceByKey(add).collect()
+# rdd = rdd.reduceByKey(lambda a, b: a + b)
+rdd = sc.parallelize(sorted(rdd.reduceByKey(lambda a, b: a + b).collect()))
 
 # Saving
 try:
     shutil.rmtree("output")
 except FileNotFoundError:
-    print("Output directory does not exist")
+   print("Output directory does not exist")
 
 rdd.saveAsTextFile("output")

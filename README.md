@@ -1,7 +1,7 @@
 
 # SID - TP Spark
 
-# Objectifs du TP
+## Objectifs du TP
 
 Le but de ce TP est d'apprendre à utiliser les technologies Hadoop et Spark afin de pouvoir lancer un programme de façon distribuée sur un cluster de machines.
 
@@ -104,13 +104,15 @@ Les données d'un nœud particulier sont gérées par un **Datanode**, alors que
 ```
 #### Utilisation du HDFS
 
-Pour formater les HDFS, lancer la commande `hdfs namenode -format`. Puis lancer la commande `start-dfs.sh` pour lancer tous les daemons nécessaires.
+Pour formater les HDFS, lancer la commande `hdfs namenode -format`. Puis lancer la commande `start-dfs.sh` pour lancer tous les démons nécessaires.
 
-Pour créer un répertoire qui contient tous les fichiers à prendre en input, lancer la commande 
+Pour créer un répertoire qui contient tous les fichiers à prendre en input, lancer la commande `hdfs dfs -mkdir inputs`. Ce répertoire est créé dans le répertorie home du HDFS, à savoir */user/ubuntu*.
+
+Pour déposer le fichier de données dans le répertoire créé, lancer la commande `hdfs dfs -put data.csv inputs`.
 
 ### YARN
 
-C'est le framework Yarn qui s'occupe vraiment de l'ordonnancement des jobs sur le cluster. Pour configurer les ressources maximales que chaque nœud peut utiliser, comme la mémoire utilisée, il faut ajouter les lignes suivantes au fichier *mapred-site.xml*.
+C'est le framework Yarn qui s'occupe l'ordonnancement des jobs sur le cluster. Pour configurer les ressources maximales que chaque nœud peut utiliser, comme la mémoire utilisée, il faut ajouter les lignes suivantes au fichier *mapred-site.xml*.
 ```
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -136,11 +138,11 @@ C'est le framework Yarn qui s'occupe vraiment de l'ordonnancement des jobs sur l
 
 Pour configurer les ressources utilisées par un conteneur Yarn dans un nœud du cluster, il faut modifier *yarn-site.xml*.
 
-La propriété `yarn.nodemanager.resource.memory-mb` permet de fixer la mémoire allouée à un conteneur.
-La propriété `yarn.scheduler.maximum-allocation-mb` permet de fixer la mémoire maximum allouée à un conteneur.
-La propriété `yarn.scheduler.minimum-allocation-mb` permet de fixer la mémoire minimum allouée à un conteneur.
-La propriété `mapreduce.map.memory.mb` permet de fixer la mémoire allouée à une opération de map.
-La propriété `mapreduce.reduce.memory.mb` permet de fixer la mémoire allouée à une opération de reduce.
+La propriété `yarn.nodemanager.resource.memory-mb` permet de fixer la mémoire allouée à un conteneur.\
+La propriété `yarn.scheduler.maximum-allocation-mb` permet de fixer la mémoire maximum allouée à un conteneur.\
+La propriété `yarn.scheduler.minimum-allocation-mb` permet de fixer la mémoire minimum allouée à un conteneur.\
+La propriété `mapreduce.map.memory.mb` permet de fixer la mémoire allouée à une opération de map.\
+La propriété `mapreduce.reduce.memory.mb` permet de fixer la mémoire allouée à une opération de reduce.\
 La propriété `yarn.app.mapreduce.am.resource.mb` permet de fixer la mémoire allouée à l'ApplicationMaster (la principale application d'un ResourceManager).
 
 ```
@@ -176,8 +178,12 @@ La propriété `yarn.app.mapreduce.am.resource.mb` permet de fixer la mémoire a
         </property>
 </configuration>
 ```
+Finalement, pour lancer le démon Yarn, lancer la commande `start-yarn.sh` depuis le nœud maître.
+
 
 ### Spark
+
+#### Téléchargement
 
 Commencer par télécharger les fichiers binaires.
 
@@ -187,9 +193,52 @@ tar xvf spark-2.3.2-bin-hadoop2.7.tgz
 mv spark-2.3.2-bin-hadoop2.7 spark
 ```
 
-Pour lancer un script Python sur le cluster, il faut lancer les commandes suivante. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`.
+#### Configuration
+
+Pour configurer Spark, il faut ajouter les lignes suivantes au fichier .profile du nœud maître.
+
+```
+export HADOOP_CONF_DIR=/home/hadoop/hadoop/etc/hadoop
+export SPARK_HOME=/home/hadoop/spark
+export LD_LIBRARY_PATH=/home/hadoop/hadoop/lib/native:$LD_LIBRARY_PATH
+```
+
+Ajouter les lignes suivantes au fichier *$SPARK_HOME/conf/spark-defaults.conf*.
+
+```
+spark.master                      yarn
+spark.driver.memory               512m
+spark.yarn.am.memory              512m
+spark.executor.memory             512m
+spark.eventLog.enabled            true
+spark.eventLog.dir                hdfs://spark-1:9000/spark-logs
+spark.history.provider            org.apache.spark.deploy.history.FsHistoryProvider
+spark.history.fs.logDirectory     hdfs://spark-1:9000/spark-logs
+spark.history.fs.update.interval  10s
+spark.history.ui.port             18080
+```
+
+Pour lancer le serveur qui gère l'historique, lancer la commande `$SPARK_HOME/sbin/start-history-server.sh`.
+
+#### Utilisation
+
+Pour lancer un script Python sur le cluster, il faut lancer les commandes suivante depuis le nœud master. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`.
 
 ```
 spark-submit --deploy-mode cluster my-script
 ```
+
+Le résultats de l'exécution du code se trouvera dans le dossier *output* du HDFS.
+
+### Remarques
+
+#### Volume des données et performances
+
+Compte-tenu du faible volume de données avec lequel nous avons réalisé nos tests, nous obtenons des performances contradictoires. En effet, l'exécution de notre code prend plus de temps quand il est lancé via Hadoop par rapport à son exécution sur une seul machine. Sur le cluster, l'exécution de notre code prend 52 secondes, contre 6.4 secondes sur une seule machine.
+
+Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code. Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
+
+#### Comportement des nœuds
+
+Nous avons vérifié que chaque nœud du cluster est bien utilisé pour exécuter notre code en lançant une commande `htop` sur chaque machine afin de pouvoir observer l'activité de leur CPU. Cependant, il s'avère que les différentes machines du cluster ne sont pas utilisées en même temps, ce qui est contre-intuitif dans le contexte de la programmation distribuée. Nous ne savons pas si s'agit d'un comportement normal de Hadoop ou non.
 

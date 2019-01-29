@@ -257,19 +257,19 @@ Après quelques recherches, nous avons décidé d'utiliser la commande `spark-su
 Avec les commandes `spark-submit --deploy-mode client my-spark.py` et `spark-submit --deploy-mode cluster my-spark.py` :
 
 ```
-| Taille du fichier   | Temps d'exécution mode local    | Temps d'exécution en mode cluster |
-| :-----------------: |: -----------------------------: |: -------------------------------: |
-| 430 Ko              | 6.4 secondes                    | 54 secondes                       |
-| 2.5 Go              | 3 minutes 33 secondes           | 3 minutes 52 secondes             |
+| Taille du fichier   | Temps d'exécution en mode local    | Temps d'exécution en mode cluster |
+| :-----------------: |: --------------------------------: |: -------------------------------: |
+| 430 Ko              | 6.4 secondes                       | 54 secondes                       |
+| 2.5 Go              | 3 minutes 33 secondes              | 3 minutes 52 secondes             |
 ```
 
 Avec les commandes `spark-submit --master local my-spark.py` et `spark-submit my-spark.py` :
 
 ```
-| Taille du fichier | Temps d'exécution mode local    | Temps d'exécution en mode cluster |
-| ----------------- |: -----------------------------: | --------------------------------: |
-| 430 Ko            | 47.1 secondes                   | 12.9 secondes                     |
-| 2.5 Go            | 33 minutes  36 secondes         | 33 minutes 34 secondes            |
+| Taille du fichier | Temps d'exécution en mode local    | Temps d'exécution en mode cluster |
+| ----------------- |: --------------------------------: | --------------------------------: |
+| 430 Ko            | 47.1 secondes                      | 12.9 secondes                     |
+| 2.5 Go            | 33 minutes  36 secondes            | 33 minutes 34 secondes            |
 ```
 
 #### Comportement des nœuds

@@ -250,9 +250,9 @@ Compte-tenu du faible volume de données avec lequel nous avons réalisé nos te
 
 Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code, comme le temps nécessaire à la préparation des nœuds, etc. Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
 
-Nous avons donc décidé d'augmenter artificiellement la taille de nos données en copiant plusieurs fois le même fichier d'entrée. La différence a alors été moins grande entre l'excution en locale et l'exécution sur le cluster, mais la version clusterisée était encore une fois toujours plus lente que la versions locale.
+Nous avons donc décidé d'augmenter artificiellement la taille de nos données en copiant plusieurs fois le même fichier d'entrée. La différence a alors été moins grande entre l'exécution en locale et l'exécution sur le cluster, mais la version clusterisée était encore une fois toujours plus lente que la versions locale.
 
-Après quelques recherches, nous avons décidé d'utiliser la commande `spark-submit --master local my-spark.py` pour forcer l'exécution sur un seul noeud et la commande `spark-submit my-spark.py` pour lancer la commande sur le cluster entier, le tout avec un jeu de données plus grand. C'est seulement à ce moment là que nous avons obtenu des résultats cohérents.
+Après quelques recherches, nous avons décidé d'utiliser la commande `spark-submit --master local my-spark.py` pour forcer l'exécution sur un seul nœud et la commande `spark-submit my-spark.py` pour lancer la commande sur le cluster entier, le tout avec un jeu de données plus grand. C'est seulement à ce moment là que nous avons obtenu des résultats cohérents.
 
 Avec les commandes `spark-submit --deploy-mode client my-spark.py` et `spark-submit --deploy-mode cluster my-spark.py` :
 
@@ -269,7 +269,7 @@ Avec les commandes `spark-submit --master local my-spark.py` et `spark-submit my
 | Taille du fichier | Temps d'exécution en mode local    | Temps d'exécution en mode cluster |
 | ----------------- |: --------------------------------: | --------------------------------: |
 | 430 Ko            | 47.1 secondes                      | 12.9 secondes                     |
-| 2.5 Go            | 33 minutes  36 secondes            | 33 minutes 34 secondes            |
+| 2.5 Go            | 5 minutes 24 secondes              | 3 minutes 34 secondes             |
 ```
 
 #### Comportement des nœuds

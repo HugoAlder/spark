@@ -1,33 +1,32 @@
-
 # SID - TP Spark
 
 ## Objectifs du TP
 
 Le but de ce TP est d'apprendre à utiliser les technologies Hadoop et Spark afin de pouvoir lancer un programme de façon distribuée sur un cluster de machines.
 
-Hadoop est un framework libre et open-source qui a pour but de faciliter la création d'applications distribuées au niveau du stockage et du traitement des données.
+Apache Hadoop est un framework libre et open-source qui a pour but de faciliter la création d'applications distribuées au niveau du stockage et du traitement des données.
 
-Apache Spark est un framework libre et open-source qui fournit des un bons nombres d'outils utiles pour la programmation distribuée. Initialement prévu pour fonctionner avec le langage de programmation Scala, nous avons décidé d'utiliser le langage Python, avec lequel nous avons plus d'expérience.
+Apache Spark est un framework libre et open-source qui fournit un bon nombre d'outils utiles pour la programmation distribuée. Initialement prévu pour fonctionner avec le langage de programmation Scala, nous avons décidé d'utiliser le langage Python, avec lequel nous avons plus d'expérience, et qui est lui aussi compatible.
 
-En guise d'exemple, nous allons analyser les données trouvées sur le site [opendata.lillemetropole.fr](https://opendata.lillemetropole.fr/explore/dataset/naissances-par-commune-departement-et-region-de-2003-a-2013/table/). Notre objectif sera de trouver le nombre de naissances par commune grâce au modèle MapReduce.
+Afin d'apprendre à utiliser ces outils, nous allons analyser les données trouvées sur le site [opendata.lillemetropole.fr](https://opendata.lillemetropole.fr/explore/dataset/naissances-par-commune-departement-et-region-de-2003-a-2013/table/). Notre objectif sera de comptabiliser le nombre de naissances par commune grâce au modèle MapReduce.
 
 Vous pouvez consulter notre répertoire GitHub [ici](https://github.com/HugoAlder/spark).
 
 ## Utilisation de Spark en local
 
-Nous avons commencé par installer PySpark (Spark pour Python) sur une seule machine.
+Nous avons commencé par installer PySpark (Spark pour Python) sur une seule machine afin de tester notre code localement.
 
-Nous utilisons des RDD afin de parcourir notre fichier CSV et obtenir les informations voulues grâce à une opération de Map/Reduce.
+Nous utilisons des RDD afin de parcourir notre fichier CSV initial et ainsi obtenir les informations voulues grâce à une opération de Map/Reduce.
 
-Pour le Map, nous séparons les champs par ";" tout en passant le header, puis nous ne sélectionnons que ceux qui nous intéressent, à savoir _Libellé Gréographique_ et _Naissances._ Le résultat est stocké dans une RDD.
+Pour le Map, nous séparons les champs par ";" tout en passant le header, puis nous ne sélectionnons que ceux qui nous intéressent, à savoir _Libellé Gréographique_ et _Naissances._ Le résultat est stocké dans un RDD.
 
 Pour le Reduce, nous recoupons les données par la clef _Libellé Géographique_, puis nous ajoutons toutes les valeurs associées à une même clef pour obtenir enfin le nombre de naissances par commune.
 
 ## Installation du cluster
 
-Pour la suite de ce projet, nous avons créé 4 machines sur l'OpenStack de l'université afin de pouvoir créer une cluster Hadoop. Le nœud master de ce cluster sera spark-1. Les nœuds slaves seront slave-2, slave-3 et slave-4.
+Pour la suite de ce projet, nous avons créé 4 machines sur l'OpenStack de l'université afin de pouvoir créer une cluster Hadoop. Le nœud master de ce cluster sera spark-1. Les nœuds esclaves seront slave-2, slave-3 et slave-4.
 
-L'ensemble des commandes utilisées pour installer le cluster son disponible dans ce script bash.
+L'ensemble des commandes utilisées pour installer le cluster son disponible dans le script bash disponible dans notre dépôt GitHub.
 
 ### Configurations préliminaires
 
@@ -42,7 +41,14 @@ Pour commencer, il faut mettre en communications les différentes machines du cl
 
 Il faut ensuite rajouter les clefs ssh publiques de chaque machine dans le fichier authorized_key de chaque autre machine.
 
-Pour indiquer quelles sont les machines esclaves dans le cluster, éditer le fichier *hadoop/etc/hadoop/slaves*.
+Ajouter la variable d'environnement *HADOOP_PREFIX* sur chaque machine et l'ajouter au *PATH*.
+
+```
+export HADOOP_PREFIX="/home/ubuntu/hadoop-2.9.2"
+export PATH="$HADOOP_PREFIX/bin:$HADOOP_PREFIX/sbin:$PATH"
+```
+
+Pour indiquer quelles sont les machines esclaves dans le cluster, éditer le fichier *$HADOOP_PREFIX/etc/hadoop/slaves*.
 
 ```
 spark-2
@@ -54,7 +60,7 @@ spark-4
 
 #### Installation de Java
 
-Nous avons commencé par mettre les paquets de toute les machines à jours tout en installant le JDK.
+Nous avons commencé par mettre les paquets de toute les machines à jours tout en installant le JDK. Il faut aussi créer une variable d'environnement *JAVA_HOME*.
 
 ```
 sudo apt update && sudo apt install openjdk-8-jre-headless openjdk-8-jdk-headless
@@ -104,7 +110,7 @@ Les données d'un nœud particulier sont gérées par un **Datanode**, alors que
 ```
 #### Utilisation du HDFS
 
-Pour formater les HDFS, lancer la commande `hdfs namenode -format`. Puis lancer la commande `start-dfs.sh` pour lancer tous les démons nécessaires.
+Pour formater le HDFS, lancer la commande `hdfs namenode -format`. Puis lancer la commande `start-dfs.sh` pour lancer tous les démons nécessaires.
 
 Pour créer un répertoire qui contient tous les fichiers à prendre en input, lancer la commande `hdfs dfs -mkdir inputs`. Ce répertoire est créé dans le répertorie home du HDFS, à savoir */user/ubuntu*.
 
@@ -195,7 +201,7 @@ mv spark-2.3.2-bin-hadoop2.7 spark
 
 #### Configuration
 
-Pour configurer Spark, il faut ajouter les lignes suivantes au fichier .profile du nœud maître.
+Pour configurer Spark, il faut ajouter les lignes suivantes au fichier *.profile* du nœud maître.
 
 ```
 export HADOOP_CONF_DIR=/home/hadoop/hadoop/etc/hadoop
@@ -217,28 +223,33 @@ spark.history.fs.logDirectory     hdfs://spark-1:9000/spark-logs
 spark.history.fs.update.interval  10s
 spark.history.ui.port             18080
 ```
+La propriété `spark.master` indique que nous utilisons yarn pour interagir avec le cluster.\
+La propriété `spark.driver.memory` indique que nous allouons 512Mo au pilote Spark en mode cluster.\
+La propriété `spark.yarn.am.memory`indique que nous allouons 512Mo à l'ApplicationMaster en mode client.\
+La propriété `spark.executor.memory` indique que nous allouons 512Mo aux calculs.\
 
-Pour lancer le serveur qui gère l'historique, lancer la commande `$SPARK_HOME/sbin/start-history-server.sh`.
+Les propriétés restantes sont utilisées afin de configurer le serveur de logs afin que celui-ci puisse se greffer au HDFS.
+
+Pour créer le dossier de logs, lancer la commande `hdfs dfs -mkdir /spark-logs`. Puis, pour lancer le serveur d'historique, lancer la commande `$SPARK_HOME/sbin/start-history-server.sh`.
 
 #### Utilisation
 
-Pour lancer un script Python sur le cluster, il faut lancer les commandes suivante depuis le nœud master. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`.
+Pour lancer un script Python sur le cluster, il faut lancer les commandes suivante depuis le nœud master. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`. Pour le lancer sur une seule machine, utiliser la commande la valeur `client`.
 
 ```
 spark-submit --deploy-mode cluster my-script
 ```
 
-Le résultats de l'exécution du code se trouvera dans le dossier *output* du HDFS.
+Le résultats de l'exécution du code se trouvera dans le dossier *output* du HDFS. On retrouve bien un total du nombre de naissances par commune.
 
 ### Remarques
 
 #### Volume des données et performances
 
-Compte-tenu du faible volume de données avec lequel nous avons réalisé nos tests, nous obtenons des performances contradictoires. En effet, l'exécution de notre code prend plus de temps quand il est lancé via Hadoop par rapport à son exécution sur une seul machine. Sur le cluster, l'exécution de notre code prend 52 secondes, contre 6.4 secondes sur une seule machine.
+Compte-tenu du faible volume de données avec lequel nous avons réalisé nos tests, nous obtenons des performances contradictoires avec ce que l'on pouvait croire de prime abord. En effet, l'exécution de notre code prend plus de temps quand il est lancé via Hadoop en mode cluster par rapport à une exécution réalisée sur une seul machine. Sur le cluster, l'exécution de notre code prend 52 secondes, contre 6.4 secondes sur une seule machine.
 
-Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code. Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
+Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code, comme le temps nécessaire à la préparation des noeuds, ... Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
 
 #### Comportement des nœuds
 
 Nous avons vérifié que chaque nœud du cluster est bien utilisé pour exécuter notre code en lançant une commande `htop` sur chaque machine afin de pouvoir observer l'activité de leur CPU. Cependant, il s'avère que les différentes machines du cluster ne sont pas utilisées en même temps, ce qui est contre-intuitif dans le contexte de la programmation distribuée. Nous ne savons pas si s'agit d'un comportement normal de Hadoop ou non.
-

@@ -24,13 +24,13 @@ Pour le Reduce, nous recoupons les données par la clef _Libellé Géographique_
 
 ## Installation du cluster
 
-Pour la suite de ce projet, nous avons créé 4 machines sur l'OpenStack de l'université afin de pouvoir créer une cluster Hadoop. Le nœud master de ce cluster sera spark-1. Les nœuds esclaves seront slave-2, slave-3 et slave-4.
+Pour la suite de ce projet, nous avons créé quatre machines sur l'OpenStack de l'université afin de pouvoir créer un cluster Hadoop. Le nœud master de ce cluster sera spark-1. Les nœuds esclaves seront slave-2, slave-3 et slave-4.
 
-L'ensemble des commandes utilisées pour installer le cluster son disponible dans le script bash disponible dans notre dépôt GitHub.
+L'ensemble des commandes utilisées pour installer le cluster est disponible dans le script bash, lui-même disponible dans notre dépôt GitHub.
 
 ### Configurations préliminaires
 
-Pour commencer, il faut mettre en communications les différentes machines du cluster. Il faut rajouter dans les fichiers */etc/hosts* de chaque machine les lignes suivantes :
+Pour commencer, il faut mettre en communication les différentes machines du cluster. Il faut rajouter dans les fichiers */etc/hosts* de chaque machine les lignes suivantes :
 
 ```
 172.28.100.76 spark-1
@@ -60,7 +60,7 @@ spark-4
 
 #### Installation de Java
 
-Nous avons commencé par mettre les paquets de toute les machines à jours tout en installant le JDK. Il faut aussi créer une variable d'environnement *JAVA_HOME*.
+Nous avons commencé par mettre les paquets de toutes les machines à jour tout en installant le JDK. Il faut aussi créer une variable d'environnement *JAVA_HOME*.
 
 ```
 sudo apt update && sudo apt install openjdk-8-jre-headless openjdk-8-jdk-headless
@@ -118,7 +118,7 @@ Pour déposer le fichier de données dans le répertoire créé, lancer la comma
 
 ### YARN
 
-C'est le framework Yarn qui s'occupe l'ordonnancement des jobs sur le cluster. Pour configurer les ressources maximales que chaque nœud peut utiliser, comme la mémoire utilisée, il faut ajouter les lignes suivantes au fichier *mapred-site.xml*.
+C'est le framework Yarn qui s'occupe l'ordonnancement des jobs sur le cluster. Pour configurer les ressources maximales que chaque nœud peut utiliser (comme la mémoire utilisée), il faut ajouter les lignes suivantes au fichier *mapred-site.xml*.
 ```
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -234,13 +234,13 @@ Pour créer le dossier de logs, lancer la commande `hdfs dfs -mkdir /spark-logs`
 
 #### Utilisation
 
-Pour lancer un script Python sur le cluster, il faut lancer les commandes suivante depuis le nœud master. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`. Pour le lancer sur une seule machine, utiliser la commande la valeur `client`.
+Pour lancer un script Python sur le cluster, il faut lancer les commandes suivantes depuis le nœud master. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`. Pour le lancer sur une seule machine, utiliser la valeur `client`.
 
 ```
 spark-submit --deploy-mode cluster my-script
 ```
 
-Le résultats de l'exécution du code se trouvera dans le dossier *output* du HDFS. On retrouve bien un total du nombre de naissances par commune.
+Le résultat de l'exécution du code se trouvera dans le dossier *output* du HDFS. On retrouve bien un total du nombre de naissances par commune.
 
 ### Remarques
 
@@ -248,8 +248,32 @@ Le résultats de l'exécution du code se trouvera dans le dossier *output* du HD
 
 Compte-tenu du faible volume de données avec lequel nous avons réalisé nos tests, nous obtenons des performances contradictoires avec ce que l'on pouvait croire de prime abord. En effet, l'exécution de notre code prend plus de temps quand il est lancé via Hadoop en mode cluster par rapport à une exécution réalisée sur une seul machine. Sur le cluster, l'exécution de notre code prend 52 secondes, contre 6.4 secondes sur une seule machine.
 
-Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code, comme le temps nécessaire à la préparation des noeuds, ... Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
+Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code, comme le temps nécessaire à la préparation des nœuds, etc. Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
+
+Nous avons donc décidé d'augmenter artificiellement la taille de nos données en copiant plusieurs fois le même fichier d'entrée. La différence a alors été moins grande entre l'excution en locale et l'exécution sur le cluster, mais la version clusterisée était encore une fois toujours plus lente que la versions locale.
+
+Après quelques recherches, nous avons décidé d'utiliser la commande `spark-submit --master local my-spark.py` pour forcer l'exécution sur un seul noeud et la commande `spark-submit my-spark.py` pour lancer la commande sur le cluster entier, le tout avec un jeu de données plus grand. C'est seulement à ce moment là que nous avons obtenu des résultats cohérents.
+
+Avec les commandes `spark-submit --deploy-mode client my-spark.py` et `spark-submit --deploy-mode cluster my-spark.py` :
+
+```
+| Taille du fichier   | Temps d'exécution mode local    | Temps d'exécution en mode cluster |
+| :-----------------: |: -----------------------------: |: -------------------------------: |
+| 430 Ko              | 6.4 secondes                    | 54 secondes                       |
+| 2.5 Go              | 3 minutes 33 secondes           | 3 minutes 52 secondes             |
+```
+
+Avec les commandes `spark-submit --master local my-spark.py` et `spark-submit my-spark.py` :
+
+```
+| Taille du fichier | Temps d'exécution mode local    | Temps d'exécution en mode cluster |
+| ----------------- |: -----------------------------: | --------------------------------: |
+| 430 Ko            | 47.1 secondes                   | 12.9 secondes                     |
+| 2.5 Go            | 33 minutes  36 secondes         | 33 minutes 34 secondes            |
+```
 
 #### Comportement des nœuds
 
 Nous avons vérifié que chaque nœud du cluster est bien utilisé pour exécuter notre code en lançant une commande `htop` sur chaque machine afin de pouvoir observer l'activité de leur CPU. Cependant, il s'avère que les différentes machines du cluster ne sont pas utilisées en même temps, ce qui est contre-intuitif dans le contexte de la programmation distribuée. Nous ne savons pas si s'agit d'un comportement normal de Hadoop ou non.
+
+Néanmoins, on observe qu'avec la commande `spark-submit my-spark.py`, au moins 2 nœuds fonctionnent à 100% en simultanée.

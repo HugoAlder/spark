@@ -1,3 +1,5 @@
+Auteurs : Alder Hugo & Aurélien Sille
+
 # SID - TP Spark
 
 ## Objectifs du TP
@@ -6,7 +8,7 @@ Le but de ce TP est d'apprendre à utiliser les technologies Hadoop et Spark afi
 
 Apache Hadoop est un framework libre et open-source qui a pour but de faciliter la création d'applications distribuées au niveau du stockage et du traitement des données.
 
-Apache Spark est un framework libre et open-source qui fournit un bon nombre d'outils utiles pour la programmation distribuée. Initialement prévu pour fonctionner avec le langage de programmation Scala, nous avons décidé d'utiliser le langage Python, avec lequel nous avons plus d'expérience, et qui est lui aussi compatible.
+Apache Spark est un framework libre et open-source qui fournit un bon nombre d'outils utiles pour la programmation distribuée. Initialement prévu pour fonctionner avec le langage de programmation Scala, il est aussi compatible avec Python. Nous avons décidé d'utiliser ce dernier langage, avec lequel nous avons plus d'expérience.
 
 Afin d'apprendre à utiliser ces outils, nous allons analyser les données trouvées sur le site [opendata.lillemetropole.fr](https://opendata.lillemetropole.fr/explore/dataset/naissances-par-commune-departement-et-region-de-2003-a-2013/table/). Notre objectif sera de comptabiliser le nombre de naissances par commune grâce au modèle MapReduce.
 
@@ -24,9 +26,9 @@ Pour le Reduce, nous recoupons les données par la clef _Libellé Géographique_
 
 ## Installation du cluster
 
-Pour la suite de ce projet, nous avons créé quatre machines sur l'OpenStack de l'université afin de pouvoir créer un cluster Hadoop. Le nœud master de ce cluster sera spark-1. Les nœuds esclaves seront slave-2, slave-3 et slave-4.
+Pour la suite de ce projet, nous avons créé quatre machines virtuelles sur l'OpenStack de l'université afin de pouvoir créer un cluster Hadoop. Le nœud master de ce cluster sera spark-1. Les nœuds esclaves seront spark-2, spark-3 et spark-4.
 
-L'ensemble des commandes utilisées pour installer le cluster est disponible dans le script bash, lui-même disponible dans notre dépôt GitHub.
+L'ensemble des commandes utilisées pour installer le cluster est disponible dans le script bash disponible dans notre dépôt GitHub.
 
 ### Configurations préliminaires
 
@@ -77,7 +79,7 @@ rm -f hadoop-2.9.2.tar.gz
 
 #### Configuration de Hadoop
 
-Le **NameNode** gère les fichiers distribués dans tout le cluster. Il faut donc modifier le fichier *core-site.xml* pour indiquer qu'il s'agit de slave-1.
+Le **NameNode** gère les fichiers distribués dans tout le cluster. Il faut donc modifier le fichier *core-site.xml* pour indiquer qu'il s'agit de spark-1.
 
 ```
 <?xml version="1.0"?>
@@ -89,7 +91,7 @@ Le **NameNode** gère les fichiers distribués dans tout le cluster. Il faut don
     </property>
 </configuration>
 ```
-Les données d'un nœud particulier sont gérées par un **Datanode**, alors que la gestion des processus d'un nœud est assurée par un **NodeManager**. Il faut indiquer au HDFS où stocker les données pour que ces deux entités fonctionnent. On indique ensuite combien de fois les données doivent être répliquées sur le cluster. Il faut ajouter les lignes suivantes au fichier *hdfs-site.xml*.
+Les données d'un nœud particulier sont gérées par un **Datanode**, alors que la gestion des processus d'un nœud est assurée par un **NodeManager**. Il faut indiquer au HDFS où stocker les données pour que ces deux entités fonctionnent correctement. On indique ensuite combien de fois les données doivent être répliquées sur le cluster. Il faut ajouter les lignes suivantes au fichier *hdfs-site.xml*.
 ```
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -226,7 +228,7 @@ spark.history.ui.port             18080
 La propriété `spark.master` indique que nous utilisons yarn pour interagir avec le cluster.\
 La propriété `spark.driver.memory` indique que nous allouons 512Mo au pilote Spark en mode cluster.\
 La propriété `spark.yarn.am.memory`indique que nous allouons 512Mo à l'ApplicationMaster en mode client.\
-La propriété `spark.executor.memory` indique que nous allouons 512Mo aux calculs.\
+La propriété `spark.executor.memory` indique que nous allouons 512Mo aux calculs.
 
 Les propriétés restantes sont utilisées afin de configurer le serveur de logs afin que celui-ci puisse se greffer au HDFS.
 
@@ -234,11 +236,7 @@ Pour créer le dossier de logs, lancer la commande `hdfs dfs -mkdir /spark-logs`
 
 #### Utilisation
 
-Pour lancer un script Python sur le cluster, il faut lancer les commandes suivantes depuis le nœud master. Pour exécuter le script de manière distribuée, il faut préciser la valeur `cluster` à l'option `--deploy-mode`. Pour le lancer sur une seule machine, utiliser la valeur `client`.
-
-```
-spark-submit --deploy-mode cluster my-script
-```
+Pour lancer un script Python sur le cluster, il faut lancer les commandes suivantes depuis le nœud master. Pour exécuter le script de façon distribuée, lancer la commande `spark-submit my-spark.py`. Pour exécuter sur un seul nœud, lancer la commande `spark-submit --master local my-spark.py`.
 
 Le résultat de l'exécution du code se trouvera dans le dossier *output* du HDFS. On retrouve bien un total du nombre de naissances par commune.
 
@@ -246,13 +244,15 @@ Le résultat de l'exécution du code se trouvera dans le dossier *output* du HDF
 
 #### Volume des données et performances
 
-Compte-tenu du faible volume de données avec lequel nous avons réalisé nos tests, nous obtenons des performances contradictoires avec ce que l'on pouvait croire de prime abord. En effet, l'exécution de notre code prend plus de temps quand il est lancé via Hadoop en mode cluster par rapport à une exécution réalisée sur une seul machine. Sur le cluster, l'exécution de notre code prend 52 secondes, contre 6.4 secondes sur une seule machine.
+Lors de nos premiers essais, nous avions utilisé la commande `spark-submit --deploy-mode client my-spark.py` pour lancer le script en local et la commande `spark-submit --deploy-mode cluster my-spark.py` pour le lancer sur tout le cluster.
 
-Nous pensons que cela est dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code, comme le temps nécessaire à la préparation des nœuds, etc. Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
+Compte-tenu du faible volume de données avec lequel nous avons réalisé nos tests, nous obtenions des performances contradictoires avec ce que l'on pouvait initialement penser. En effet, l'exécution de notre code prenait plus de temps quand il était lancé via Hadoop en mode cluster par rapport à une exécution réalisée sur une seul machine en mode client. Sur le cluster, l'exécution de notre code prenait 54 secondes, contre 6.4 secondes sur une seule machine.
+
+Nous pensons que cela était dû au fait qu'Hadoop demande pas mal de temps et de ressources lors du lancement préliminaire à l'exécution effective de notre code, comme le temps nécessaire à la préparation des nœuds, etc. Ce temps de préparation peut être négligé lors du traitement de volumes de données bien plus gros, mais il devient non-négligeable lors de l'exécution d'un petit volume de données.
 
 Nous avons donc décidé d'augmenter artificiellement la taille de nos données en copiant plusieurs fois le même fichier d'entrée. La différence a alors été moins grande entre l'exécution en locale et l'exécution sur le cluster, mais la version clusterisée était encore une fois toujours plus lente que la versions locale.
 
-Après quelques recherches, nous avons décidé d'utiliser la commande `spark-submit --master local my-spark.py` pour forcer l'exécution sur un seul nœud et la commande `spark-submit my-spark.py` pour lancer la commande sur le cluster entier, le tout avec un jeu de données plus grand. C'est seulement à ce moment là que nous avons obtenu des résultats cohérents.
+Après quelques recherches, nous avons décidé d'utiliser la commande `spark-submit --master local my-spark.py` pour forcer l'exécution sur un seul nœud et la commande `spark-submit my-spark.py` pour lancer la commande sur le cluster entier, le tout avec un jeu de données plus grand. C'est à ce moment là que nous avons obtenu des résultats cohérents.
 
 Avec les commandes `spark-submit --deploy-mode client my-spark.py` et `spark-submit --deploy-mode cluster my-spark.py` :
 
